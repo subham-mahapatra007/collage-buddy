@@ -1,0 +1,202 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  MENTOR
+  FACULTY
+  ADMIN
+}
+
+enum ResourceType {
+  NOTE
+  PDF
+  BOOK
+  PPT
+  PYQ
+  MCQ
+  VIVA
+  IMPORTANT
+  LAB
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+model User {
+  id            String          @id @default(uuid())
+  name          String
+  email         String          @unique
+  passwordHash  String
+  mobile        String?
+  college       String?
+  branch        String?         @default("Computer Science & Engineering")
+  semester      Int             @default(1)
+  rollNumber    String?         @unique
+  role          Role            @default(STUDENT)
+  image         String?
+  
+  // Gamification
+  xp            Int             @default(0)
+  level         Int             @default(1)
+  studyStreak   Int             @default(0)
+  lastActive    DateTime?
+  codingScore   Int             @default(0)
+  badges        String          @default("[]") // JSON string array: ["first_login", "attendance_champion"]
+  
+  // Relations
+  resources     Resource[]
+  attendance    Attendance[]
+  studyGoals    StudyGoal[]
+  posts         CommunityPost[]
+  comments      Comment[]
+  likes         Like[]
+  projects      Project[]
+  groupMessages GroupMessage[]
+  createdGroups StudyGroup[]    @relation("GroupCreator")
+  groups        StudyGroup[]    @relation("GroupMembers")
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model Subject {
+  id         String       @id @default(uuid())
+  code       String       @unique
+  name       String
+  semester   Int
+  resources  Resource[]
+  attendance Attendance[]
+}
+
+model Resource {
+  id          String       @id @default(uuid())
+  title       String
+  type        ResourceType
+  url         String?      // URL to file in Supabase Storage/Cloudinary
+  content     String?      // Text content or AI explanation
+  subjectId   String
+  subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    AttendanceStatus
+  createdAt DateTime         @default(now())
+}
+
+model StudyGoal {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  targetDate  DateTime
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model CommunityPost {
+  id        String    @id @default(uuid())
+  title     String
+  content   String
+  category  String    @default("General") // "Doubts", "Career", "Notes", "General"
+  tags      String    @default("[]")      // JSON string array
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  likes     Like[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Comment {
+  id        String        @id @default(uuid())
+  content   String
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+}
+
+model Like {
+  id        String        @id @default(uuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model StudyGroup {
+  id          String         @id @default(uuid())
+  name        String
+  description String?
+  creatorId   String
+  creator     User           @relation("GroupCreator", fields: [creatorId], references: [id])
+  members     User[]         @relation("GroupMembers")
+  messages    GroupMessage[]
+  createdAt   DateTime       @default(now())
+}
+
+model GroupMessage {
+  id        String     @id @default(uuid())
+  groupId   String
+  group     StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  fileUrl   String?
+  createdAt DateTime   @default(now())
+}
+
+model PlacementPrep {
+  id         String   @id @default(uuid())
+  company    String   // "TCS", "Wipro", "Infosys", etc.
+  category   String   // "Aptitude", "Technical", "HR", "Coding", "Experiences"
+  title      String
+  content    String
+  difficulty String   @default("Medium") // "Easy", "Medium", "Hard"
+  createdAt  DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  type        String   // "Mini", "Major"
+  repoUrl     String?
+  demoUrl     String?
+  schema      String?  // Database Schema description/text
+  pptUrl      String?
+  reportUrl   String?
+  authorId    String
+  user        User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+}
