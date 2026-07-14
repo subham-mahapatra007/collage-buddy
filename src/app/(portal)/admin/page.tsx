@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import GlassCard from "@/components/GlassCard";
@@ -7,7 +8,7 @@ import { seedAcademicData } from "@/app/actions";
 
 export default async function AdminPage() {
   const session = await getSession();
-  
+
   if (!session) {
     redirect("/login");
   }
